@@ -1,9 +1,10 @@
 import datetime
 from urllib.parse import urlencode
 import requests
+import configuration
 
+# Функция получение токена VK
 def getting_a_token(app_id):
-    # app_id = '51770037'
     oauth_base_url = 'https://oauth.vk.com/authorize'
     params = {
         'client_id': app_id,
@@ -12,7 +13,6 @@ def getting_a_token(app_id):
         'scope': 'status, photos',
         'response_type': 'token',
     }
-
     oauth_url = f'{oauth_base_url}?{urlencode(params)}'
     print(oauth_url)
 
@@ -35,23 +35,39 @@ class VKAPIClient:
 
     def _get_photos(self):
         params = self.get_common_params()
-        params.update({'owner_id': self.user_id, 'album_id': '-183', 'extended': '1'})
+        params.update({'owner_id': self.user_id, 'album_id': 'profile', 'extended': '1'})
         response = requests.get(self._build_url('photos.get'), params=params)
         return response.json()
 
     def get_list_foto_max_quality(self):
         list_foto_all_info = self._get_photos()['response']['items']
+        vk_photo_sizes = {'s': 1, 'm': 2, 'o': 3, 'p': 4, 'q': 5, 'r': 6, 'x': 7, 'y': 8, 'z': 9, 'w': 10}
         foto_list_for_download = []
-        for id_, foto_info in enumerate(list_foto_all_info):
-            list_foto = sorted(foto_info['sizes'], key=lambda x: x['width'], reverse=True)[0]
-            list_foto.pop('type')
-            list_foto['file_name'] = f'{id_}.jpg'
-            foto_list_for_download.append(list_foto)
+        file_name_list = []
+        index = 2
+        for foto_all_info in list_foto_all_info:
+            file_name = foto_all_info["likes"]["count"]
+            if file_name in file_name_list:
+                file_name = f'{file_name}_{str(datetime.datetime.fromtimestamp(foto_all_info["date"]))}'
+                if file_name in file_name_list:
+                    file_name = f'{file_name}_{index}'
+                    index += 1
+            file_name_list.append(file_name)
+            max_photo_size = max(foto_all_info['sizes'], key= lambda x: vk_photo_sizes[x['type']])
+            max_photo_size['file_name'] = f'{file_name}.jpg'
+            max_photo_size['size'] = max_photo_size.pop('type')
+            foto_list_for_download.append(max_photo_size)
         return foto_list_for_download
 
-    def creating_folder_in_yd(self, auth_token, path_folder):
+
+class YDAPIclient:
+
+    def __init__(self, auth_token):
+        self.auth_token = auth_token
+
+    def creating_folder_in_yd(self, path_folder):
         url = 'https://cloud-api.yandex.net/v1/disk/resources'
-        headers = {'Authorization': auth_token}
+        headers = {'Authorization': self.auth_token}
         params = {'path': path_folder}
         response = requests.put(url, headers=headers, params=params)
         print(f'Создана папка {path_folder} для backup фото из VK')
@@ -60,7 +76,7 @@ class VKAPIClient:
         url = 'https://cloud-api.yandex.net/v1/disk/resources/upload'
         path_file = f'{path_folder}{foto["file_name"]}'
         download_url = foto['url']
-        headers = {'Authorization': auth_token}
+        headers = {'Authorization': self.auth_token}
         params = {'url': download_url,
                   'path': path_file}
         response = requests.post(url, headers=headers, params=params)
@@ -68,10 +84,9 @@ class VKAPIClient:
         response = requests.get(upload_url, headers=headers)
         return response.json()['status']
 
-    def backup_photos_in_yd(self, auth_token):
+    def backup_photos_in_yd(self, list_of_fotos):
         path_folder = f'disk:/backup foto from VK/{datetime.datetime.now()}/'
-        self.creating_folder_in_yd(auth_token, path_folder)
-        list_of_fotos = self.get_list_foto_max_quality()
+        self.creating_folder_in_yd(path_folder)
         for foto in list_of_fotos:
             status = 'failed'
             i = 0
@@ -85,12 +100,15 @@ class VKAPIClient:
 
 
 if __name__ == '__main__':
-    # app_id = input('Введите ID приложения: ')
-    # getting_a_token(app_id)
-    token = ('vk1.a.RHsSlNhRLUJe5Ay2LS4dMbaU_JLfCEWSDy6lqKJPNNOMe0OQ3sInskCu0t6WkHUpg3O4WgI47aaSLwOiZdclOTKHiB4HZ9rLz'
-             'P18jdc72yigcWK_LgSnsgisp6w62jGoYpMKnHjbfUQ805OYy4tkrUbH9mauaiMqubM3ickQT4xBvgKOUqYjdMBh6yqz393ozmV_fgJB'
-             'r4t-QpOza_5iug')
-    user_id = input('Введите id пользователя VK: ')
-    auth_token = input('Введите токен для доступа по API к яндекс-диску: ')
+    print('Запущенное приложение может сделать резервное копирование на яндекс-диск фотографий с Вашего профиля!')
+    print('Для начала работы приложения необходимо открыть в браузере выданную ниже ссылку')
+    getting_a_token(configuration.app_id)
+    print('После входа в свой аккаунт VK необходимо из адресной строки браузера скопировать в приложение значение '
+          'access_token')
+    token = input('Введите значение access_token из адресной строки браузера: ')
+    user_id = input('Введите id Вашего профиля в VK: ')
     vk_client = VKAPIClient(token, user_id)
-    vk_client.backup_photos_in_yd(auth_token)
+    list_of_fotos = vk_client.get_list_foto_max_quality()
+    auth_token_yd = input('Для доступа к яндекс-диску введите OAuth-токен диска: ')
+    yd_client = YDAPIclient(auth_token_yd)
+    yd_client.backup_photos_in_yd(list_of_fotos)
