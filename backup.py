@@ -6,6 +6,11 @@ from yd_api import YDAPIclient
 
 # Функция получение токена VK
 def getting_a_token(app_id):
+    """
+    Функция получения токена VK
+    :param app_id:
+    :return:
+    """
     oauth_base_url = 'https://oauth.vk.com/authorize'
     params = {
         'client_id': app_id,
@@ -16,6 +21,73 @@ def getting_a_token(app_id):
     }
     oauth_url = f'{oauth_base_url}?{urlencode(params)}'
     print(oauth_url)
+
+def entering_number_of_photos():
+    """
+    Функция ввода количества фотографий
+    :return:
+    """
+    while True:
+        try:
+            number_of_photos = int(input('Укажите количество фотографий, которое необходимо сохранить на яндекс-диске'
+                                         ' (чтобы отказаться от резервного копирования введите 0): '))
+        except ValueError:
+            print('Вы ввели неверное значение!\n'
+                  'Введите цифру больше нуля.')
+        else:
+            if number_of_photos < 0:
+                print('Вы ввели отрицательное или нулевое значение!\n'
+                      'Введите цифру больше нуля.')
+            elif number_of_photos == 0:
+                break
+            else:
+                if number_of_photos > len(list_of_photos):
+                    print('Вы ввели цифру, превышающую количество фотографий в профиле VK, '
+                          'поэтому будут сохранены все фотографии!')
+                    number_of_photos = len(list_of_photos)
+                creating_folder_and_copy_photos(number_of_photos)
+                break
+
+def output_list_of_photos(list_of_photos):
+    """
+    Функция вывода списка фотографий профиля VK
+    :param list_of_photos:
+    :return:
+    """
+    print(f'В Вашем профиле VK {len(list_of_photos)} фотографий:')
+    for index, photo in enumerate(list_of_photos):
+        print(f'{index + 1}. {photo["url"]}')
+
+def creating_folder_and_copy_photos(number_of_photos):
+    """
+    Функция создания папки на яндекс-диске и копирования фото
+    :param number_of_photos:
+    :return:
+    """
+    yd_client = YDAPIclient(auth_token_yd)
+    while True:
+        folder_name = input('Задайте имя папки, в которую необходимо сохранить '
+                            'фотографии: ')
+        path_folder = f'disk:/{folder_name}/'
+        response = yd_client.creating_folder_in_yd(path_folder)
+        status_operation = response.status_code
+        if status_operation == 201:
+            print(f'Создана папка {folder_name} для backup фото из VK в '
+                  f'{datetime.datetime.now()}!')
+            yd_client.backup_photos_in_yd(list_of_photos[:number_of_photos], path_folder)
+            break
+        elif status_operation == 401:
+            print('Отсутствует доступ к яндекс-диску!\n'
+                  'Введите правильный OAuth-токен яндекс-диска в настройках '
+                  'приложения.')
+            break
+        elif status_operation == 409:
+            print('Задано неправильное название папки!')
+        else:
+            print(f'Ошибка: {response.json().get("message")}\n'
+                  f'Проверьте все настройки приложения и попробуйте заново сделать'
+                  f' резервное копирование фотографий.')
+            break
 
 
 if __name__ == '__main__':
@@ -64,53 +136,8 @@ if __name__ == '__main__':
                     list_of_photos, status = vk_client.get_list_foto_max_quality()
                     if status == 'success':
                         if len(list_of_photos) > 0:
-                            print(f'В Вашем профиле VK {len(list_of_photos)} фотографий:')
-                            for index, photo in enumerate(list_of_photos):
-                                print(f'{index + 1}. {photo["url"]}')
-                            while True:
-                                try:
-                                    number_of_photos = int(input('Укажите количество фотографий, которое необходимо'
-                                                                 ' сохранить на яндекс-диске (чтобы отказаться от '
-                                                                 'резервного копирования введите 0): '))
-                                except ValueError:
-                                    print('Вы ввели неверное значение!\n'
-                                          'Введите цифру больше нуля.')
-                                else:
-                                    if number_of_photos < 0:
-                                        print('Вы ввели отрицательное или нулевое значение!\n'
-                                              'Введите цифру больше нуля.')
-                                    elif number_of_photos == 0:
-                                        break
-                                    else:
-                                        if number_of_photos > len(list_of_photos):
-                                            print('Вы ввели цифру, превышающую количество фотографий в профиле VK, '
-                                                  'поэтому будут сохранены все фотографии!')
-                                            number_of_photos = len(list_of_photos)
-                                        yd_client = YDAPIclient(auth_token_yd)
-                                        while True:
-                                            folder_name = input('Задайте имя папки, в которую необходимо сохранить '
-                                                                'фотографии: ')
-                                            path_folder = f'disk:/{folder_name}/'
-                                            response = yd_client.creating_folder_in_yd(path_folder)
-                                            status_operation = response.status_code
-                                            if status_operation == 201:
-                                                print(f'Создана папка {folder_name} для backup фото из VK в '
-                                                      f'{datetime.datetime.now()}!')
-                                                yd_client.backup_photos_in_yd(list_of_photos[:number_of_photos], path_folder)
-                                                break
-                                            elif status_operation == 401:
-                                                print('Отсутствует доступ к яндекс-диску!\n'
-                                                      'Введите правильный OAuth-токен яндекс-диска в настройках '
-                                                      'приложения.')
-                                                break
-                                            elif status_operation == 409:
-                                                print('Задано неправильное название папки!')
-                                            else:
-                                                print(f'Ошибка: {response.json().get("message")}\n'
-                                                      f'Проверьте все настройки приложения и попробуйте заново сделать'
-                                                      f' резервное копирование фотографий.')
-                                                break
-                                        break
+                            output_list_of_photos(list_of_photos)
+                            entering_number_of_photos()
                         else:
                             print('\n'
                                   'В указанном профиле VK отсутствуют фотографии')

@@ -31,10 +31,13 @@ class YDAPIclient:
         for foto in list_of_fotos:
             status = 'failed'
             i = 0
-            while status == 'failed':
+            while status == 'failed' and i < 5:
                 status = self._copy_foto(path_folder, foto)
                 i += 1
             if i == 1:
                 print(f'Файл {foto["file_name"]} скопирован в {datetime.datetime.now()}!')
             else:
                 print(f'Файл {foto["file_name"]} скопирован в {datetime.datetime.now()} с {i}-й потытки!')
+            if i == 5:
+                print(f'Файл {foto["file_name"]} не удалось скопировать из-за ошибки яндекс-диска! \n'
+                      f'Попробуйте сделать копию позже.')
