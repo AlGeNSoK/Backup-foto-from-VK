@@ -1,6 +1,7 @@
 from urllib.parse import urlencode
 from vk_api import VKAPIClient
 from yd_api import YDAPIclient
+import json
 
 
 # Функция получение токена VK
@@ -27,7 +28,13 @@ def output_list_of_photos(list_of_photos):
     for index, photo in enumerate(list_of_photos):
         print(f'{index + 1}. {photo["url"]}')
 
-def copy_photos():
+def save_json(list_of_photos, number_of_photos):
+    while len(list_of_photos) > number_of_photos:
+        list_of_photos.pop()
+    with open('photos.json', 'w') as f:
+        json.dump(list_of_photos, f, ensure_ascii=False, indent=4)
+
+def copy_photos(auth_token_yd):
     """
     Функция ввода количества фотографий и их выгрузки на яндекс-диск
     """
@@ -49,6 +56,7 @@ def copy_photos():
                     print('Вы ввели цифру, превышающую количество фотографий в профиле VK, '
                           'поэтому будут сохранены все фотографии!')
                     number_of_photos = len(list_of_photos)
+                save_json(list_of_photos, number_of_photos)
                 yd_client = YDAPIclient(auth_token_yd)
                 yd_client.creating_folder_and_copy_photos(number_of_photos, list_of_photos)
                 break
@@ -101,7 +109,7 @@ if __name__ == '__main__':
                     if status == 'success':
                         if len(list_of_photos) > 0:
                             output_list_of_photos(list_of_photos)
-                            copy_photos()
+                            copy_photos(auth_token_yd)
                         else:
                             print('\n'
                                   'В указанном профиле VK отсутствуют фотографии')
