@@ -1,24 +1,7 @@
-from urllib.parse import urlencode
 from vk_api import VKAPIClient
 from yd_api import YDAPIclient
 import json
 
-
-# Функция получение токена VK
-def getting_a_token(app_id):
-    """
-    Функция получения токена VK
-    """
-    oauth_base_url = 'https://oauth.vk.com/authorize'
-    params = {
-        'client_id': app_id,
-        'redirect_uri': 'https://oauth.vk.com/blank.html',
-        'display': 'page',
-        'scope': 'status, photos',
-        'response_type': 'token',
-    }
-    oauth_url = f'{oauth_base_url}?{urlencode(params)}'
-    print(oauth_url)
 
 def output_list_of_photos(list_of_photos):
     """
@@ -63,7 +46,6 @@ def copy_photos(auth_token_yd):
 
 
 if __name__ == '__main__':
-    app_id = '51770037'
     token= ''
     user_id = ''
     auth_token_yd = ''
@@ -81,7 +63,7 @@ if __name__ == '__main__':
             if action == 1:
                 while True:
                     print('\n'
-                          '1. Получение и ввод access_token для доступа к VK.\n'
+                          '1. Ввод access_token для доступа к VK.\n'
                           '2. Ввод id профиля VK.\n'
                           '3. Ввод OAuth-токена яндекс-диска.\n'
                           '4. Выход в главное меню.\n')
@@ -91,11 +73,7 @@ if __name__ == '__main__':
                         pass
                     else:
                         if settings_action == 1:
-                            getting_a_token(app_id)
-                            print('1. Откройте в браузере выданную выше ссылку.\n'
-                                  '2. После входа в свой аккаунт VK необходимо из адресной строки браузера скопировать '
-                                  'значение access_token.\n')
-                            token = input('Введите значение access_token из адресной строки браузера: ')
+                            token = input('Введите access_token VK: ')
                         elif settings_action == 2:
                             user_id = input('Введите id Вашего профиля в VK: ')
                         elif settings_action == 3:
